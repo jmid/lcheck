@@ -109,7 +109,7 @@ The functor GenericTests accepts any module with the below signature.
     end
 
 Note that the above signature does not contain an explicit top
-element. Insted the signature LATTICE extends the above signature with
+element. Instead the signature LATTICE extends the above signature with
 such an element along with a small top-related testsuite.
 
 
@@ -131,23 +131,23 @@ syntax approaching math-mode signatures. We illustrate both below.
 
 - The signature DSL is defined by the following BNF:
 
-    baseprop  ::=  modname -<-> modname       (monotonicity)
-                |  modname -$-> modname       (strictness)
-                |  modname -~-> modname       (invariance)
+      baseprop  ::=  modname -<-> modname       (monotonicity)
+                  |  modname -$-> modname       (strictness)
+                  |  modname -~-> modname       (invariance)
 
-        prop  ::=  '(testsig' (modname '--->')* baseprop ('--->' modname)*) ')' 'for_op'
+          prop  ::=  '(testsig' (modname '--->')* baseprop ('--->' modname)*) ')' 'for_op'
 
 
   For example,
 
-    (testsig (module L) -<-> (module L)) for_op
+      (testsig (module L) -<-> (module L)) for_op
 
   specifies monotonicity of a function from L to L.
 
 
   For a more advanced example,
 
-    (testsig (module L) ---> (module L) -<-> (module L) ---> (module L) ---> (module L)) for_op
+      (testsig (module L) ---> (module L) -<-> (module L) ---> (module L) ---> (module L)) for_op
 
   specifies monotonicity in the second argument of a function with
   signature L -> L -> L -> L -> L.
@@ -164,33 +164,31 @@ syntax approaching math-mode signatures. We illustrate both below.
 
 - The combinator DSL is defined by the following BNF:
 
-
-    modname   ::=  '(module' NAME ')'
-  
-    baseprop  ::=  op_monotone
-                |  op_strict
-                |  op_invariant
-  
-    rightprop ::=  baseprop
-                |  pw_right modname '(' rightprop ')'
-  
-    leftprop  ::=  rightprop
-                |  pw_left modname '(' leftprop ')'
-  
-    prop      ::=  'finalize (' leftprop modname modname ')'
-
+      modname   ::=  '(module' NAME ')'
+    
+      baseprop  ::=  op_monotone
+                  |  op_strict
+                  |  op_invariant
+    
+      rightprop ::=  baseprop
+                  |  pw_right modname '(' rightprop ')'
+    
+      leftprop  ::=  rightprop
+                  |  pw_left modname '(' leftprop ')'
+    
+      prop      ::=  'finalize (' leftprop modname modname ')'
 
 
   Argument modules to pw_left and pw_right has to match the following
   signature (an element type, a generator, and a string coercion
   function):
 
-    module type ARB_ARG =
-    sig
-      type elem
-      val arb_elem    : elem Arbitrary.t
-      val to_string   : elem -> string
-    end
+      module type ARB_ARG =
+      sig
+        type elem
+        val arb_elem    : elem Arbitrary.t
+        val to_string   : elem -> string
+      end
 
 
   Revising the example above,
@@ -209,8 +207,6 @@ syntax approaching math-mode signatures. We illustrate both below.
 
   Furthermore the library provides '=::' as an infix shorthand for
   finalize.
-
-
 
 
 
