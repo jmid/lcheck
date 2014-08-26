@@ -131,6 +131,8 @@ syntax approaching math-mode signatures. We illustrate both below.
 
 - The signature DSL is defined by the following BNF:
 
+         modname  ::=  '(module' NAME ')'
+
         baseprop  ::=  modname -<-> modname       (monotonicity)
                     |  modname -$-> modname       (strictness)
                     |  modname -~-> modname       (invariance)
@@ -157,7 +159,7 @@ syntax approaching math-mode signatures. We illustrate both below.
 
 
   One limitation of the signature-based DSL is that all arguments have
-  to be lattice, i.e., to match the LATTICE_TOPLESS signature. The
+  to be lattices, i.e., to match the LATTICE_TOPLESS signature. The
   combinator-based DSL described below softens this requirement.
 
 
@@ -203,7 +205,8 @@ syntax approaching math-mode signatures. We illustrate both below.
         finalize (pw_left (module L) (pw_right (module L) (pw_right (module L) op_monotone)) (module L) (module L))
 
   specifies monotonicity in the second argument of a function with
-  signature L -> L -> L -> L -> L.
+  signature L -> L -> L -> L -> L. (We have omitted parentheses around
+  op_monotone in this example as they are not required.)
 
   Furthermore the library provides '=::' as an infix shorthand for
   finalize.
