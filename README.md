@@ -137,7 +137,7 @@ syntax approaching math-mode signatures. We illustrate both below.
                     |  modname -$-> modname       (strictness)
                     |  modname -~-> modname       (invariance)
 
-            prop  ::=  '(testsig' (modname '--->')* baseprop ('--->' modname)*) ')' 'for_op'
+            prop  ::=  '(testsig' (modname '--->')* baseprop ('--->' modname)* ')' 'for_op'
 
 
   For example,
