@@ -53,114 +53,114 @@ struct
 
   (* Generic lattice property tests *)
   let leq_refl =  (* forall a. a <= a *)
-    mk_test ~n:1000 ~pp:L.to_string ~name:("leq reflexive in " ^ L.name) ~size:size
+    mk_test ~n:1000 ~pp:L.to_string ~limit:1 ~name:("leq reflexive in " ^ L.name) ~size:size
       L.arb_elem
       (fun a -> L.leq a a)
 
   let leq_trans = (* forall a,b,c. a <= b /\ b <= c  =>  a <= c *)
-    mk_test ~n:1000 ~pp:pp_triple ~name:("leq transitive in " ^ L.name) ~size:size_triple
+    mk_test ~n:1000 ~pp:pp_triple ~limit:1 ~name:("leq transitive in " ^ L.name) ~size:size_triple
       ord_triple (* arb_triple *)
       (fun (a,b,c) -> Prop.assume (L.leq a b); 
                       Prop.assume (L.leq b c); 
 		      L.leq a c)
 
   let leq_antisym = (* forall a,b. a <= b /\ b <= a  =>  a = b *)
-    mk_test ~n:1000 ~pp:pp_pair ~name:("leq anti symmetric in " ^ L.name) ~size:size_pair
+    mk_test ~n:1000 ~pp:pp_pair ~limit:1 ~name:("leq anti symmetric in " ^ L.name) ~size:size_pair
       L.equiv_pair (* Alternatively: Arbitrary.(choose [L.equiv_pair; ord_pair; ord_pair >>= fun (a,b) -> return (b,a)]) *)
       (fun (a,b) -> Prop.assume (L.leq a b); 
                     Prop.assume (L.leq b a); 
 		    L.eq a b)
 
 (*let top_is_upperbound = (* forall a. a <= top *)
-    mk_test ~n:1000 ~pp:L.to_string ~name:("top is upper bound in " ^ L.name)
+    mk_test ~n:1000 ~pp:L.to_string ~limit:1 ~name:("top is upper bound in " ^ L.name)
             ~size:(fun a -> String.length (pp_pair a))
       L.arb_elem
       (fun a -> L.(leq a top))    *)
 
   let bot_is_lowerbound = (* forall a. bot <= a *)
-    mk_test ~n:1000 ~pp:L.to_string ~name:("bot is lower bound in " ^ L.name) ~size:size
+    mk_test ~n:1000 ~pp:L.to_string ~limit:1 ~name:("bot is lower bound in " ^ L.name) ~size:size
       L.arb_elem
       (fun a -> L.(leq bot a))
 
   let join_comm = (* forall a,b. a \/ b = b \/ a *)
-    mk_test ~n:1000 ~pp:pp_pair ~name:("join commutative in " ^ L.name) ~size:size_pair
+    mk_test ~n:1000 ~pp:pp_pair ~limit:1 ~name:("join commutative in " ^ L.name) ~size:size_pair
       arb_pair
       (fun (a,b) -> L.(eq (join a b) (join b a)))
 
   let join_assoc = (* forall a,b,c. (a \/ b) \/ c = a \/ (b \/ c) *)
-    mk_test ~n:1000 ~pp:pp_triple ~name:("join associative in " ^ L.name) ~size:size_triple
+    mk_test ~n:1000 ~pp:pp_triple ~limit:1 ~name:("join associative in " ^ L.name) ~size:size_triple
       arb_triple
       (fun (a,b,c) -> L.(eq (join (join a b) c) (join a (join b c)) ))
 
   let join_idempotent = (* forall a. a \/ a = a *)
-    mk_test ~n:1000 ~pp:L.to_string ~name:("join idempotent in " ^ L.name) ~size:size
+    mk_test ~n:1000 ~pp:L.to_string ~limit:1 ~name:("join idempotent in " ^ L.name) ~size:size
       L.arb_elem
       (fun a -> L.(eq (join a a) a))
 
   let meet_comm = (* forall a,b. a /\ b = b /\ a *)
-    mk_test ~n:1000 ~pp:pp_pair ~name:("meet commutative in " ^ L.name) ~size:size_pair
+    mk_test ~n:1000 ~pp:pp_pair ~limit:1 ~name:("meet commutative in " ^ L.name) ~size:size_pair
       arb_pair
       (fun (a,b) -> L.(eq (meet a b) (meet b a)))
 
   let meet_assoc = (* forall a,b,c. (a /\ b) /\ c = a /\ (b /\ c) *)
-    mk_test ~n:1000 ~pp:pp_triple ~name:("meet associative in " ^ L.name) ~size:size_triple
+    mk_test ~n:1000 ~pp:pp_triple ~limit:1 ~name:("meet associative in " ^ L.name) ~size:size_triple
       arb_triple
       (fun (a,b,c) -> L.(eq (meet (meet a b) c) (meet a (meet b c)) ))
 
   let meet_idempotent = (* forall a. a /\ a = a *)
-    mk_test ~n:1000 ~pp:L.to_string ~name:("meet idempotent in " ^ L.name) ~size:size
+    mk_test ~n:1000 ~pp:L.to_string ~limit:1 ~name:("meet idempotent in " ^ L.name) ~size:size
       L.arb_elem
       (fun a -> L.(eq (meet a a) a))
 
   let join_meet_absorption = (* forall a,b. a \/ (a /\ b) = a *)
-    mk_test ~n:1000 ~pp:pp_pair ~name:("join meet absorbtion in " ^ L.name) ~size:size_pair
+    mk_test ~n:1000 ~pp:pp_pair ~limit:1 ~name:("join meet absorbtion in " ^ L.name) ~size:size_pair
       arb_pair
       (fun (a,b) -> L.(eq (join a (meet a b)) a))
 
   let meet_join_absorption =  (* forall a,b. a /\ (a \/ b) = a *)
-    mk_test ~n:1000 ~pp:pp_pair ~name:("meet join absorbtion in " ^ L.name) ~size:size_pair
+    mk_test ~n:1000 ~pp:pp_pair ~limit:1 ~name:("meet join absorbtion in " ^ L.name) ~size:size_pair
       arb_pair
       (fun (a,b) -> L.(eq (meet a (join a b)) a))
 
   let leq_compat_join =  (* forall a,b. a < b  ==>  a \/ b = b  *)
-    mk_test ~n:1000 ~pp:pp_pair ~name:("leq compatible join in " ^ L.name) ~size:size_pair
+    mk_test ~n:1000 ~pp:pp_pair ~limit:1 ~name:("leq compatible join in " ^ L.name) ~size:size_pair
       ord_pair (*arb_pair*)
       (fun (a,b) -> Prop.assume (L.leq a b);
                     L.(eq (join a b) b))
 
   let join_compat_leq =  (* forall a,b. a \/ b = b  ==> a < b  *)
-    mk_test ~n:1000 ~pp:pp_pair ~name:("join compatible leq in " ^ L.name) ~size:size_pair
+    mk_test ~n:1000 ~pp:pp_pair ~limit:1 ~name:("join compatible leq in " ^ L.name) ~size:size_pair
       ord_pair (*arb_pair*)
       (fun (a,b) -> Prop.assume L.(eq (join a b) b);
                     (L.leq a b))
 
   let join_compat_meet =  (* forall a,b. a \/ b = b  ==>  a /\ b  = a  *)
-    mk_test ~n:1000 ~pp:pp_pair ~name:("join compatible meet in " ^ L.name) ~size:size_pair
+    mk_test ~n:1000 ~pp:pp_pair ~limit:1 ~name:("join compatible meet in " ^ L.name) ~size:size_pair
       ord_pair (*arb_pair*)
       (fun (a,b) -> Prop.assume L.(eq (join a b) b);
                     L.(eq (meet a b) a))
 
   let meet_compat_join =  (* forall a,b. a /\ b  = a  ==>  a \/ b = b    *)
-    mk_test ~n:1000 ~pp:pp_pair ~name:("meet compatible join in " ^ L.name) ~size:size_pair
+    mk_test ~n:1000 ~pp:pp_pair ~limit:1 ~name:("meet compatible join in " ^ L.name) ~size:size_pair
       ord_pair (*arb_pair*)
       (fun (a,b) -> Prop.assume L.(eq (meet a b) a);
                     L.(eq (join a b) b))
 
   let meet_compat_leq =  (* forall a,b. a /\ b  = a  ==>  a <= b  *)
-    mk_test ~n:1000 ~pp:pp_pair ~name:("meet compatible leq in " ^ L.name) ~size:size_pair
+    mk_test ~n:1000 ~pp:pp_pair ~limit:1 ~name:("meet compatible leq in " ^ L.name) ~size:size_pair
       ord_pair (*arb_pair*)
       (fun (a,b) -> Prop.assume (L.(eq (meet a b) a));
                     L.leq a b)
 
   let leq_compat_meet =  (* forall a,b. a <= b  ==>  a /\ b  = a  *)
-    mk_test ~n:1000 ~pp:pp_pair ~name:("leq compatible meet in " ^ L.name) ~size:size_pair
+    mk_test ~n:1000 ~pp:pp_pair ~limit:1 ~name:("leq compatible meet in " ^ L.name) ~size:size_pair
       ord_pair (*arb_pair*)
       (fun (a,b) -> Prop.assume (L.leq a b);
                     L.(eq (meet a b) a))
 
   (* Consistency check: generated ordered pairs are in fact ordered *)
   let check_ordering =
-    mk_test ~n:1000 ~pp:pp_pair ~name:("generated ordered pairs consistent in " ^ L.name) ~size:size_pair
+    mk_test ~n:1000 ~pp:pp_pair ~limit:1 ~name:("generated ordered pairs consistent in " ^ L.name) ~size:size_pair
       ord_pair (fun (a,b) -> L.leq a b)
 
   let pp_pair    = PP.pair L.to_string L.to_string
@@ -183,7 +183,7 @@ end
 module GenericTopTests (L : LATTICE) =
 struct
   let top_is_upperbound = (* forall a. a <= top *)
-    mk_test ~n:1000 ~pp:L.to_string ~name:("top is upper bound in " ^ L.name)
+    mk_test ~n:1000 ~pp:L.to_string ~limit:1 ~name:("top is upper bound in " ^ L.name)
             ~size:(fun a -> String.length (L.to_string a))
       L.arb_elem
       (fun a -> L.(leq a top))
