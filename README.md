@@ -121,6 +121,15 @@ In addition LCheck provides a number of helper lattices:
  - MkListLattice: a functor for building list lattices ordered entry-wise.
 
 
+For more complex lattices containing syntactically different elements with the
+same meaning (concretization or denotation), one can simply choose to implement
+'eq' as a test for ordering in both directions:
+
+    let eq e e' = leq e e' && leq e' e
+
+As a consequence the anti-symmetry from 'GenericTests' will be vacuously true. 
+
+
 The embedded DSLs:
 ------------------
 
