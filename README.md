@@ -127,7 +127,7 @@ same meaning (concretization or denotation), one can simply choose to implement
 
     let eq e e' = leq e e' && leq e' e
 
-As a consequence the anti-symmetry from 'GenericTests' will be vacuously true. 
+As a consequence the anti-symmetry test from 'GenericTests' will be vacuously true. 
 
 
 The embedded DSLs:
