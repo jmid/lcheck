@@ -82,8 +82,8 @@ You can test flip for monotonicity using LCheck's signature DSL:
 where the -<-> arrow is supposed to resemble a function arrow --->
 with an associated lattice ordering.
 
-Other "property arrows" include -$-> for testing strictness and -~->
-for testing invariance.
+Other "property arrows" include -$-> for testing strictness, -~->
+for testing invariance, and -%-> for testing distributivity.
 
 
 The functor:
@@ -145,6 +145,7 @@ syntax approaching math-mode signatures. We illustrate both below.
         baseprop  ::=  modname -<-> modname       (monotonicity)
                     |  modname -$-> modname       (strictness)
                     |  modname -~-> modname       (invariance)
+                    |  modname -%-> modname       (distributivity)
 
             prop  ::=  '(testsig' (modname '--->')* baseprop ('--->' modname)* ')' 'for_op'
 
@@ -180,6 +181,7 @@ syntax approaching math-mode signatures. We illustrate both below.
         baseprop  ::=  op_monotone
                     |  op_strict
                     |  op_invariant
+                    |  op_distributive
       
         rightprop ::=  baseprop
                     |  pw_right modname '(' rightprop ')'

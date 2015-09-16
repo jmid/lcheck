@@ -221,19 +221,6 @@ let op_monotone (type a) (type b) (module PL : LATTICE_TOPLESS with type elem = 
      "monotone",
      1)
 
-let pw_left (type a) (module PL : ARB_ARG with type elem = a) op_prop m1 m2 k =
-  op_prop m1 m2 (fun (subpp,subgen,prop,pname,leftargs) -> k (PP.pair PL.to_string subpp,
-							      Arbitrary.pair PL.arb_elem subgen,
-							      (fun op (a,b) -> prop (op a) b),
-						              pname,
-							      leftargs+1))
-let pw_right (type a) (module PL : ARB_ARG with type elem = a) op_prop m1 m2 k =
-  op_prop m1 m2 (fun (subpp,subgen,prop,pname,leftargs) -> k (PP.pair subpp PL.to_string,
-							      Arbitrary.pair subgen PL.arb_elem,
-							      (fun op (p,st) -> prop (fun v -> op v st) p),
-							      pname,
-							      leftargs))
-
 let op_invariant (type a) (type b) (module PL : LATTICE_TOPLESS with type elem = a)
                                    (module RL : LATTICE_TOPLESS with type elem = b) k =
   k (PP.pair PL.to_string PL.to_string, 
@@ -250,6 +237,29 @@ let op_strict (type a) (type b) (module PL : LATTICE_TOPLESS with type elem = a)
      "strict",
      1)
 
+let op_distributive (type a) (type b) (module PL : LATTICE_TOPLESS with type elem = a)
+                                      (module RL : LATTICE_TOPLESS with type elem = b) k =
+  let arb_pair = Arbitrary.pair PL.arb_elem PL.arb_elem in
+  k (PP.pair PL.to_string PL.to_string, 
+     arb_pair,
+     (fun op (v,v') -> RL.eq (op (PL.join v v')) (RL.join (op v) (op v'))),
+     "distributive",
+     1)
+
+let pw_left (type a) (module PL : ARB_ARG with type elem = a) op_prop m1 m2 k =
+  op_prop m1 m2 (fun (subpp,subgen,prop,pname,leftargs) -> k (PP.pair PL.to_string subpp,
+							      Arbitrary.pair PL.arb_elem subgen,
+							      (fun op (a,b) -> prop (op a) b),
+						              pname,
+							      leftargs+1))
+
+let pw_right (type a) (module PL : ARB_ARG with type elem = a) op_prop m1 m2 k =
+  op_prop m1 m2 (fun (subpp,subgen,prop,pname,leftargs) -> k (PP.pair subpp PL.to_string,
+							      Arbitrary.pair subgen PL.arb_elem,
+							      (fun op (p,st) -> prop (fun v -> op v st) p),
+							      pname,
+							      leftargs))
+
 let ( ---> ) (type e) (type e') = fun a -> fun (b : (module LATTICE_TOPLESS with type elem = e)) ->
                         fun k -> a (fun (l,optranl,r,optranr,prop) ->
 			  let module R = (val r : LATTICE_TOPLESS with type elem = e') in (* manual "upcast" *)
@@ -263,13 +273,16 @@ let ( -$-> ) (type e) = fun a -> fun (b : (module LATTICE_TOPLESS with type elem
                         fun k -> a (fun (l,optranl,r,_,_) -> k (r,(fun prop -> prop),b,optranl,op_strict))
 let ( -~-> ) (type e) = fun a -> fun (b : (module LATTICE_TOPLESS with type elem = e)) ->
                         fun k -> a (fun (l,optranl,r,_,_) -> k (r,(fun prop -> prop),b,optranl,op_invariant))
+let ( -%-> ) (type e) = fun a -> fun (b : (module LATTICE_TOPLESS with type elem = e)) ->
+                        fun k -> a (fun (l,optranl,r,_,_) -> k (r,(fun prop -> prop),b,optranl,op_distributive))
+
 let testsig (type e) (i : (module LATTICE_TOPLESS with type elem = e)) k =
   k (i,(fun prop -> prop),i,(fun prop -> prop),(fun _ -> assert false))
 
 let finalize opsig (opname,op) =
   opsig (fun (pp,gen,prop,pname,leftargs) ->
            mk_test ~n:1000 ~pp:pp ~limit:1 ~size:(fun a -> String.length (pp a))
-                   ~name:(Printf.sprintf "'%s %s in %i. argument'" opname pname leftargs)
+                   ~name:(Printf.sprintf "'%s %s in argument %i'" opname pname leftargs)
                    gen (prop op))
 
 let ( =:: ) a (b,c) = finalize a (b,c)
