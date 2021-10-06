@@ -20,10 +20,9 @@ sig
 (*  val top       : elem *)
   val eq          : elem -> elem -> bool
   val to_string   : elem -> string
-  val pprint      : elem -> unit
-  val arb_elem    : elem Arbitrary.t
-  val equiv_pair  : (elem * elem) Arbitrary.t
-  val arb_elem_le : elem -> elem Arbitrary.t
+  val arb_elem    : elem arbitrary
+  val equiv_pair  : (elem * elem) arbitrary
+  val arb_elem_le : elem -> elem arbitrary
 end
 
 module type LATTICE =
@@ -35,136 +34,151 @@ end
 module GenericTests (L : LATTICE_TOPLESS) =
 struct
   (* Helpers for generating pairs and triples *)
-  let arb_pair   = Arbitrary.pair L.arb_elem L.arb_elem
-  let arb_triple = Arbitrary.triple L.arb_elem L.arb_elem L.arb_elem
-
-  let ord_pair   = Arbitrary.(L.arb_elem >>= fun e -> pair (L.arb_elem_le e) (return e))
-  let ord_triple = Arbitrary.(L.arb_elem >>= fun e -> 
- 			       L.arb_elem_le e >>= fun e' ->
- 			        L.arb_elem_le e' >>= fun e'' -> return (e'',e',e))
+  let arb_pair   = pair L.arb_elem L.arb_elem
+  let arb_triple = triple L.arb_elem L.arb_elem L.arb_elem
 
   (* Helpers for pretty printing pairs and triples *)
-  let pp_pair    = PP.pair L.to_string L.to_string
-  let pp_triple  = PP.triple L.to_string L.to_string L.to_string
+  let pp_pair    = Print.pair L.to_string L.to_string
+  let pp_triple  = Print.triple L.to_string L.to_string L.to_string
 
-  let size a        = String.length (L.to_string a)
-  let size_pair p   = String.length (pp_pair p)
-  let size_triple t = String.length (pp_triple t)
+  let ord_pair =
+    let gen =
+      Gen.(L.arb_elem.gen >>= fun e -> pair (L.arb_elem_le e).gen (return e))
+    in
+    make gen ~print:pp_pair
+
+  let ord_triple =
+    let gen =
+      Gen.(
+        L.arb_elem.gen >>= fun e ->
+        (L.arb_elem_le e).gen >>= fun e' ->
+        (L.arb_elem_le e').gen >>= fun e'' -> return (e'', e', e))
+    in
+    make gen ~print:pp_triple
+
+  let small a        = String.length (L.to_string a)
+  let small_pair p   = String.length (pp_pair p)
+  let small_triple t = String.length (pp_triple t)
 
   (* Generic lattice property tests *)
   let leq_refl =  (* forall a. a <= a *)
-    mk_test ~n:1000 ~pp:L.to_string ~limit:1 ~name:("leq reflexive in " ^ L.name) ~size:size
-      L.arb_elem
+    Test.make ~count:1000 ~max_fail:1 ~name:("leq reflexive in " ^ L.name)
+      ~small L.arb_elem
       (fun a -> L.leq a a)
 
   let leq_trans = (* forall a,b,c. a <= b /\ b <= c  =>  a <= c *)
-    mk_test ~n:1000 ~pp:pp_triple ~limit:1 ~name:("leq transitive in " ^ L.name) ~size:size_triple
+    Test.make ~count:1000 ~max_fail:1 ~name:("leq transitive in " ^ L.name) ~small:small_triple
       ord_triple (* arb_triple *)
-      (fun (a,b,c) -> Prop.assume (L.leq a b); 
-                      Prop.assume (L.leq b c); 
+      (fun (a,b,c) -> assume (L.leq a b); 
+                      assume (L.leq b c); 
 		      L.leq a c)
 
   let leq_antisym = (* forall a,b. a <= b /\ b <= a  =>  a = b *)
-    mk_test ~n:1000 ~pp:pp_pair ~limit:1 ~name:("leq anti symmetric in " ^ L.name) ~size:size_pair
+    Test.make ~count:1000 ~max_fail:1 ~name:("leq anti symmetric in " ^ L.name) ~small:small_pair
       L.equiv_pair (* Alternatively: Arbitrary.(choose [L.equiv_pair; ord_pair; ord_pair >>= fun (a,b) -> return (b,a)]) *)
-      (fun (a,b) -> Prop.assume (L.leq a b); 
-                    Prop.assume (L.leq b a); 
+      (fun (a,b) -> assume (L.leq a b); 
+                    assume (L.leq b a); 
 		    L.eq a b)
 
 (*let top_is_upperbound = (* forall a. a <= top *)
-    mk_test ~n:1000 ~pp:L.to_string ~limit:1 ~name:("top is upper bound in " ^ L.name)
-            ~size:(fun a -> String.length (pp_pair a))
+    Test.make ~count:1000 ~max_fail:1 ~name:("top is upper bound in " ^ L.name)
+            ~small:(fun a -> String.length (pp_pair a))
       L.arb_elem
       (fun a -> L.(leq a top))    *)
 
-  let bot_is_lowerbound = (* forall a. bot <= a *)
-    mk_test ~n:1000 ~pp:L.to_string ~limit:1 ~name:("bot is lower bound in " ^ L.name) ~size:size
+  let bot_is_lowerbound =
+ (* forall a. bot <= a *)
+    Test.make ~count:1000 ~max_fail:1 ~name:("bot is lower bound in " ^ L.name) ~small
       L.arb_elem
       (fun a -> L.(leq bot a))
 
   let join_comm = (* forall a,b. a \/ b = b \/ a *)
-    mk_test ~n:1000 ~pp:pp_pair ~limit:1 ~name:("join commutative in " ^ L.name) ~size:size_pair
+    Test.make ~count:1000 ~max_fail:1 ~name:("join commutative in " ^ L.name) ~small:small_pair
       arb_pair
-      (fun (a,b) -> L.(eq (join a b) (join b a)))
+      (fun (a, b) -> L.(eq (join a b) (join b a)))
 
   let join_assoc = (* forall a,b,c. (a \/ b) \/ c = a \/ (b \/ c) *)
-    mk_test ~n:1000 ~pp:pp_triple ~limit:1 ~name:("join associative in " ^ L.name) ~size:size_triple
+    Test.make ~count:1000 ~max_fail:1 ~name:("join associative in " ^ L.name) ~small:small_triple
       arb_triple
       (fun (a,b,c) -> L.(eq (join (join a b) c) (join a (join b c)) ))
 
   let join_idempotent = (* forall a. a \/ a = a *)
-    mk_test ~n:1000 ~pp:L.to_string ~limit:1 ~name:("join idempotent in " ^ L.name) ~size:size
+    Test.make ~count:1000 ~max_fail:1 ~name:("join idempotent in " ^ L.name) ~small
       L.arb_elem
       (fun a -> L.(eq (join a a) a))
 
   let meet_comm = (* forall a,b. a /\ b = b /\ a *)
-    mk_test ~n:1000 ~pp:pp_pair ~limit:1 ~name:("meet commutative in " ^ L.name) ~size:size_pair
+    Test.make ~count:1000 ~max_fail:1 ~name:("meet commutative in " ^ L.name) ~small:small_pair
       arb_pair
       (fun (a,b) -> L.(eq (meet a b) (meet b a)))
 
   let meet_assoc = (* forall a,b,c. (a /\ b) /\ c = a /\ (b /\ c) *)
-    mk_test ~n:1000 ~pp:pp_triple ~limit:1 ~name:("meet associative in " ^ L.name) ~size:size_triple
+    Test.make ~count:1000 ~max_fail:1 ~name:("meet associative in " ^ L.name) ~small:small_triple
       arb_triple
       (fun (a,b,c) -> L.(eq (meet (meet a b) c) (meet a (meet b c)) ))
 
   let meet_idempotent = (* forall a. a /\ a = a *)
-    mk_test ~n:1000 ~pp:L.to_string ~limit:1 ~name:("meet idempotent in " ^ L.name) ~size:size
+    Test.make ~count:1000 ~max_fail:1 ~name:("meet idempotent in " ^ L.name) ~small
       L.arb_elem
       (fun a -> L.(eq (meet a a) a))
 
   let join_meet_absorption = (* forall a,b. a \/ (a /\ b) = a *)
-    mk_test ~n:1000 ~pp:pp_pair ~limit:1 ~name:("join meet absorbtion in " ^ L.name) ~size:size_pair
+    Test.make ~count:1000 ~max_fail:1 ~name:("join meet absorbtion in " ^ L.name) ~small:small_pair
       arb_pair
       (fun (a,b) -> L.(eq (join a (meet a b)) a))
 
   let meet_join_absorption =  (* forall a,b. a /\ (a \/ b) = a *)
-    mk_test ~n:1000 ~pp:pp_pair ~limit:1 ~name:("meet join absorbtion in " ^ L.name) ~size:size_pair
+    Test.make ~count:1000 ~max_fail:1 ~name:("meet join absorbtion in " ^ L.name) ~small:small_pair
       arb_pair
       (fun (a,b) -> L.(eq (meet a (join a b)) a))
 
   let leq_compat_join =  (* forall a,b. a < b  ==>  a \/ b = b  *)
-    mk_test ~n:1000 ~pp:pp_pair ~limit:1 ~name:("leq compatible join in " ^ L.name) ~size:size_pair
+    Test.make ~count:1000 ~max_fail:1 ~name:("leq compatible join in " ^ L.name) ~small:small_pair
       ord_pair (*arb_pair*)
-      (fun (a,b) -> Prop.assume (L.leq a b);
+      (fun (a,b) -> assume (L.leq a b);
                     L.(eq (join a b) b))
 
   let join_compat_leq =  (* forall a,b. a \/ b = b  ==> a < b  *)
-    mk_test ~n:1000 ~pp:pp_pair ~limit:1 ~name:("join compatible leq in " ^ L.name) ~size:size_pair
+    Test.make ~count:1000 ~max_fail:1 ~name:("join compatible leq in " ^ L.name) ~small:small_pair
       ord_pair (*arb_pair*)
-      (fun (a,b) -> Prop.assume L.(eq (join a b) b);
+      (fun (a,b) -> assume L.(eq (join a b) b);
                     (L.leq a b))
 
   let join_compat_meet =  (* forall a,b. a \/ b = b  ==>  a /\ b  = a  *)
-    mk_test ~n:1000 ~pp:pp_pair ~limit:1 ~name:("join compatible meet in " ^ L.name) ~size:size_pair
+    Test.make ~count:1000 ~max_fail:1 ~name:("join compatible meet in " ^ L.name) ~small:small_pair
       ord_pair (*arb_pair*)
-      (fun (a,b) -> Prop.assume L.(eq (join a b) b);
+      (fun (a,b) -> assume L.(eq (join a b) b);
                     L.(eq (meet a b) a))
 
   let meet_compat_join =  (* forall a,b. a /\ b  = a  ==>  a \/ b = b    *)
-    mk_test ~n:1000 ~pp:pp_pair ~limit:1 ~name:("meet compatible join in " ^ L.name) ~size:size_pair
+    Test.make ~count:1000 ~max_fail:1 ~name:("meet compatible join in " ^ L.name) ~small:small_pair
       ord_pair (*arb_pair*)
-      (fun (a,b) -> Prop.assume L.(eq (meet a b) a);
+      (fun (a,b) -> assume L.(eq (meet a b) a);
                     L.(eq (join a b) b))
 
   let meet_compat_leq =  (* forall a,b. a /\ b  = a  ==>  a <= b  *)
-    mk_test ~n:1000 ~pp:pp_pair ~limit:1 ~name:("meet compatible leq in " ^ L.name) ~size:size_pair
+    Test.make ~count:1000 ~max_fail:1 ~name:("meet compatible leq in " ^ L.name) ~small:small_pair
       ord_pair (*arb_pair*)
-      (fun (a,b) -> Prop.assume (L.(eq (meet a b) a));
+      (fun (a,b) -> assume (L.(eq (meet a b) a));
                     L.leq a b)
 
   let leq_compat_meet =  (* forall a,b. a <= b  ==>  a /\ b  = a  *)
-    mk_test ~n:1000 ~pp:pp_pair ~limit:1 ~name:("leq compatible meet in " ^ L.name) ~size:size_pair
+    Test.make ~count:1000 ~max_fail:1 ~name:("leq compatible meet in " ^ L.name) ~small:small_pair
       ord_pair (*arb_pair*)
-      (fun (a,b) -> Prop.assume (L.leq a b);
+      (fun (a,b) -> assume (L.leq a b);
                     L.(eq (meet a b) a))
 
   (* Consistency check: generated ordered pairs are in fact ordered *)
   let check_ordering =
-    mk_test ~n:1000 ~pp:pp_pair ~limit:1 ~name:("generated ordered pairs consistent in " ^ L.name) ~size:size_pair
+    Test.make ~count:1000 ~max_fail:1 ~name:("generated ordered pairs consistent in " ^ L.name) ~small:small_pair
       ord_pair (fun (a,b) -> L.leq a b)
 
-  let pp_pair    = PP.pair L.to_string L.to_string
-  let ord_pair   = Arbitrary.(L.arb_elem >>= fun v -> pair (L.arb_elem_le v) (return v))
+  let pp_pair    = Print.pair L.to_string L.to_string
+  let ord_pair   =
+    let gen =
+      Gen.(L.arb_elem.gen >>= fun v -> pair (L.arb_elem_le v).gen (return v))
+    in
+    make gen ~print:pp_pair
 
   let suite =
     [ leq_refl; leq_trans; leq_antisym;
@@ -180,11 +194,10 @@ struct
       check_ordering; ]
 end
 
-module GenericTopTests (L : LATTICE) =
-struct
+module GenericTopTests (L : LATTICE) = struct
   let top_is_upperbound = (* forall a. a <= top *)
-    mk_test ~n:1000 ~pp:L.to_string ~limit:1 ~name:("top is upper bound in " ^ L.name)
-            ~size:(fun a -> String.length (L.to_string a))
+    Test.make ~count:1000 ~max_fail:1 ~name:("top is upper bound in " ^ L.name)
+            ~small:(fun a -> String.length (L.to_string a))
       L.arb_elem
       (fun a -> L.(leq a top))
 
@@ -195,67 +208,76 @@ end
 (** EDSL for lattice operation tests *)
 
 let ord_pair (type a) (module L : LATTICE_TOPLESS with type elem = a) =
-  Arbitrary.(L.arb_elem >>= fun e -> pair (L.arb_elem_le e) (return e))
+  let gen =
+    Gen.(L.arb_elem.gen >>= fun e -> pair (L.arb_elem_le e).gen (return e))
+  in
+  make gen
 
 module type ARB_ARG =
 sig
 (*  val name  : string *)
   type elem
-  val arb_elem    : elem Arbitrary.t
+
+  val arb_elem    : elem arbitrary
   val to_string   : elem -> string
 end
 
 module MkArbListArg (A : ARB_ARG) =
 struct
   type elem = A.elem list
-  let arb_elem = Arbitrary.(list ~len:(int 20) A.arb_elem)
-  let to_string = PP.list A.to_string
+  let arb_elem = list_of_size (Gen.int_bound 20) A.arb_elem
+  let to_string = Print.list A.to_string
 end
 
 let op_monotone (type a) (type b) (module PL : LATTICE_TOPLESS with type elem = a)
                                   (module RL : LATTICE_TOPLESS with type elem = b) k =
-  let ord_pair = Arbitrary.(PL.arb_elem >>= fun e -> pair (PL.arb_elem_le e) (return e)) in
-  k (PP.pair PL.to_string PL.to_string, 
+  let ord_pair =
+    let gen =
+      Gen.(PL.arb_elem.gen >>= fun e -> pair (PL.arb_elem_le e).gen (return e))
+    in
+    make gen
+  in
+  k (Print.pair PL.to_string PL.to_string, 
      ord_pair,
-     (fun op (v,v') -> Prop.assume (PL.leq v v'); RL.leq (op v) (op v')),
+     (fun op (v,v') -> assume (PL.leq v v'); RL.leq (op v) (op v')),
      "monotone",
      1)
 
 let op_invariant (type a) (type b) (module PL : LATTICE_TOPLESS with type elem = a)
                                    (module RL : LATTICE_TOPLESS with type elem = b) k =
-  k (PP.pair PL.to_string PL.to_string, 
+  k (Print.pair PL.to_string PL.to_string, 
      PL.equiv_pair,
-     (fun op (v,v') -> Prop.assume (PL.eq v v'); RL.eq (op v) (op v')),
+     (fun op (v,v') -> assume (PL.eq v v'); RL.eq (op v) (op v')),
      "invariant",
      1)
 
 let op_strict (type a) (type b) (module PL : LATTICE_TOPLESS with type elem = a)
                                 (module RL : LATTICE_TOPLESS with type elem = b) k =
   k (PL.to_string, 
-     Arbitrary.return PL.bot,
-     (fun op bot -> Prop.assume (PL.eq bot PL.bot); RL.eq (op bot) RL.bot),
+     always PL.bot,
+     (fun op bot -> assume (PL.eq bot PL.bot); RL.eq (op bot) RL.bot),
      "strict",
      1)
 
 let op_distributive (type a) (type b) (module PL : LATTICE_TOPLESS with type elem = a)
                                       (module RL : LATTICE_TOPLESS with type elem = b) k =
-  let arb_pair = Arbitrary.pair PL.arb_elem PL.arb_elem in
-  k (PP.pair PL.to_string PL.to_string, 
+  let arb_pair = pair PL.arb_elem PL.arb_elem in
+  k (Print.pair PL.to_string PL.to_string, 
      arb_pair,
      (fun op (v,v') -> RL.eq (op (PL.join v v')) (RL.join (op v) (op v'))),
      "distributive",
      1)
 
 let pw_left (type a) (module PL : ARB_ARG with type elem = a) op_prop m1 m2 k =
-  op_prop m1 m2 (fun (subpp,subgen,prop,pname,leftargs) -> k (PP.pair PL.to_string subpp,
-							      Arbitrary.pair PL.arb_elem subgen,
+  op_prop m1 m2 (fun (subpp,subgen,prop,pname,leftargs) -> k (Print.pair PL.to_string subpp,
+							      pair PL.arb_elem subgen,
 							      (fun op (a,b) -> prop (op a) b),
 						              pname,
 							      leftargs+1))
 
 let pw_right (type a) (module PL : ARB_ARG with type elem = a) op_prop m1 m2 k =
-  op_prop m1 m2 (fun (subpp,subgen,prop,pname,leftargs) -> k (PP.pair subpp PL.to_string,
-							      Arbitrary.pair subgen PL.arb_elem,
+  op_prop m1 m2 (fun (subpp,subgen,prop,pname,leftargs) -> k (Print.pair subpp PL.to_string,
+							      pair subgen PL.arb_elem,
 							      (fun op (p,st) -> prop (fun v -> op v st) p),
 							      pname,
 							      leftargs))
@@ -281,7 +303,7 @@ let testsig (type e) (i : (module LATTICE_TOPLESS with type elem = e)) k =
 
 let finalize opsig (opname,op) =
   opsig (fun (pp,gen,prop,pname,leftargs) ->
-           mk_test ~n:1000 ~pp:pp ~limit:1 ~size:(fun a -> String.length (pp a))
+           Test.make ~count:1000 ~max_fail:1 ~small:(fun a -> String.length (pp a))
                    ~name:(Printf.sprintf "'%s %s in argument %i'" opname pname leftargs)
                    gen (prop op))
 
@@ -308,11 +330,10 @@ struct
   let top = false
   let eq = (=)
   let to_string = string_of_bool
-  let pprint = Format.printf "%b"
   (* The below ones are generic *)
-  let arb_elem = Arbitrary.among [bot; top]
-  let equiv_pair = Arbitrary.(lift (fun a -> (a,a)) arb_elem)
-  let arb_elem_le e = if e = top then arb_elem else Arbitrary.return bot
+  let arb_elem = bool
+  let equiv_pair = map (fun a -> (a,a)) arb_elem
+  let arb_elem_le e = if e = top then arb_elem else always bot
 end
 
 (* Note: the following module represents the dual Boolean lattice:   *)
@@ -329,11 +350,10 @@ struct
   let top = true
   let eq = (=)
   let to_string = string_of_bool
-  let pprint = Format.printf "%b"
   (* The below ones are generic *)
-  let arb_elem = Arbitrary.among [bot; top]
-  let equiv_pair = Arbitrary.(lift (fun a -> (a,a)) arb_elem)
-  let arb_elem_le e = if e = top then arb_elem else Arbitrary.return bot
+  let arb_elem = bool
+  let equiv_pair = map (fun a -> (a,a)) arb_elem
+  let arb_elem_le e = if e = top then arb_elem else always bot
 end
 
 module GenBoolTests     = GenericTests(Bool)
@@ -350,12 +370,10 @@ module MkPairLattice (A : LATTICE_TOPLESS) (B : LATTICE_TOPLESS)
   let meet p p' = (A.meet (fst p) (fst p'), B.meet (snd p) (snd p'))
   let bot       = (A.bot, B.bot)
   let eq p p'   = A.eq (fst p) (fst p') && B.eq (snd p) (snd p')
-  let to_string = PP.pair A.to_string B.to_string
-  let pprint p  = Format.printf "%s" (to_string p)
-  let arb_elem  = Arbitrary.pair A.arb_elem B.arb_elem
-  let equiv_pair = Arbitrary.(A.equiv_pair >>= fun (a,a') ->
-			      B.equiv_pair >>= fun (b,b') -> return ((a,b),(a',b')))
-  let arb_elem_le p = Arbitrary.pair (A.arb_elem_le (fst p)) (B.arb_elem_le (snd p))
+  let to_string = Print.pair A.to_string B.to_string
+  let arb_elem  = pair A.arb_elem B.arb_elem
+  let equiv_pair = map (fun a -> (a,a)) arb_elem
+  let arb_elem_le p = pair (A.arb_elem_le (fst p)) (B.arb_elem_le (snd p))
 end
 
 module MkListLattice (A : LATTICE_TOPLESS) =
@@ -379,13 +397,15 @@ struct
     | [],[]-> true
     | v::vs,u::us -> A.eq v u && eq vs us
     | _,_  -> false
-  let to_string = PP.list A.to_string
-  let pprint vs = Format.printf "%s" (to_string vs)
-  let arb_elem = Arbitrary.list A.arb_elem
-  let equiv_pair = Arbitrary.(lift (fun v -> (v,v)) arb_elem)
-  let arb_elem_le vs = Arbitrary.(int (1 + List.length vs) >>= fun i -> 
-		 		  let smaller_vs,_ = split i vs in
+  let to_string = Print.list A.to_string
+  let arb_elem = list A.arb_elem
+  let equiv_pair = map (fun v -> (v,v)) arb_elem
+  let arb_elem_le vs =
+    let gen =
+    Gen.(int_bound (1 + List.length vs) >>= fun i -> 
+		 		  let smaller_vs, _ = split i vs in
 				  List.fold_right
-				    (fun v acc_gen -> lift2 (fun v a -> v::a) (A.arb_elem_le v) acc_gen)
-				    smaller_vs (Arbitrary.return []))
+				    (fun v acc_gen -> map2 (fun v a -> v::a) (A.arb_elem_le v).gen acc_gen)
+				    smaller_vs (return []))
+    in make gen ~print:to_string
 end
