@@ -1,0 +1,10 @@
+(library
+ (name lcheck)
+ (public_name lcheck)
+ (libraries qcheck)
+ (wrapped false))
+
+(env
+ (dev
+  (flags
+   (:standard -warn-error -A))))
